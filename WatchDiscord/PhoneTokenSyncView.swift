@@ -1,17 +1,12 @@
 import SwiftUI
+import WebKit
 import WatchConnectivity
 
 @MainActor
-final class PhoneLoginViewModel: NSObject, ObservableObject, WCSessionDelegate {
-    @Published var email = ""
-    @Published var password = ""
-    @Published var twoFactorCode = ""
-    @Published var manualToken = ""
-
-    @Published var mfaTicket: String?
-    @Published var isLoading = false
-    @Published var statusText = "Sign in to sync with your Apple Watch"
-    @Published var isError = false
+final class WebLoginCoordinator: NSObject, ObservableObject, WCSessionDelegate, WKNavigationDelegate, WKScriptMessageHandler {
+    @Published var statusText = "Sign in on Discord below to auto-sync to your Watch"
+    @Published var isSynced = false
+    @Published var reloadTrigger = UUID()
 
     override init() {
         super.init()
@@ -21,113 +16,21 @@ final class PhoneLoginViewModel: NSObject, ObservableObject, WCSessionDelegate {
         }
     }
 
-    func login() async {
-        let cleanEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanEmail.isEmpty, !password.isEmpty else {
-            setStatus("Enter both email and password.", error: true)
-            return
-        }
-
-        isLoading = true
-        isError = false
-        defer { isLoading = false }
-
-        guard let url = URL(string: "https://discord.com") else { return }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Discord-iOS/250.0 (iPhone; iOS 17.5)", forHTTPHeaderField: "User-Agent")
-
-        let body: [String: Any] = [
-            "login": cleanEmail,
-            "password": password,
-            "undelete": false
-        ]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-
-        do {
-            let (data, _) = try await URLSession.shared.data(for: request)
-            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                setStatus("Invalid response from Discord.", error: true)
-                return
-            }
-
-            if let token = json["token"] as? String, !token.isEmpty {
-                sendTokenToWatch(token)
-            } else if let ticket = json["ticket"] as? String {
-                mfaTicket = ticket
-                setStatus("Enter your 6-digit 2FA authenticator code.", error: false)
-            } else if let captchaKey = json["captcha_key"] {
-                _ = captchaKey
-                setStatus("Discord requested a CAPTCHA. Use the Manual Token section below.", error: true)
-            } else if let message = json["message"] as? String {
-                setStatus(message, error: true)
-            } else {
-                setStatus("Login failed. Check your email and password.", error: true)
-            }
-        } catch {
-            setStatus("Network error: \(error.localizedDescription)", error: true)
-        }
-    }
-
-    func submitTwoFactor() async {
-        guard let ticket = mfaTicket else { return }
-        let cleanCode = twoFactorCode.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanCode.isEmpty else {
-            setStatus("Enter your 6-digit 2FA code.", error: true)
-            return
-        }
-
-        isLoading = true
-        isError = false
-        defer { isLoading = false }
-
-        guard let url = URL(string: "https://discord.com") else { return }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Discord-iOS/250.0 (iPhone; iOS 17.5)", forHTTPHeaderField: "User-Agent")
-
-        let body: [String: Any] = [
-            "code": cleanCode,
-            "ticket": ticket
-        ]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-
-        do {
-            let (data, _) = try await URLSession.shared.data(for: request)
-            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                setStatus("Invalid 2FA response.", error: true)
-                return
-            }
-
-            if let token = json["token"] as? String, !token.isEmpty {
-                mfaTicket = nil
-                twoFactorCode = ""
-                sendTokenToWatch(token)
-            } else if let message = json["message"] as? String {
-                setStatus(message, error: true)
-            } else {
-                setStatus("Invalid 2FA code.", error: true)
-            }
-        } catch {
-            setStatus("Network error: \(error.localizedDescription)", error: true)
-        }
-    }
-
     func sendTokenToWatch(_ rawToken: String) {
-        let cleaned = rawToken.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleaned.isEmpty else {
-            setStatus("Token is empty.", error: true)
-            return
-        }
+        let cleaned = rawToken
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\"", with: "")
+        guard !cleaned.isEmpty, cleaned != "null", cleaned != "undefined" else { return }
+        guard !isSynced else { return }
 
+        isSynced = true
         let payload = ["discord_user_token": cleaned]
         do {
             try WCSession.default.updateApplicationContext(payload)
-            setStatus("Logged in & synced to Apple Watch! Open Discord on your wrist.", error: false)
+            statusText = "Logged in & synced! Open Discord on your Apple Watch."
         } catch {
-            setStatus("Logged in, but watch sync failed: \(error.localizedDescription)", error: true)
+            isSynced = false
+            statusText = "Sync error: \(error.localizedDescription)"
         }
 
         if WCSession.default.isReachable {
@@ -135,9 +38,23 @@ final class PhoneLoginViewModel: NSObject, ObservableObject, WCSessionDelegate {
         }
     }
 
-    private func setStatus(_ text: String, error: Bool) {
-        statusText = text
-        isError = error
+    func resetSession() {
+        isSynced = false
+        statusText = "Sign in on Discord below to auto-sync to your Watch"
+        let dataStore = WKWebsiteDataStore.default()
+        dataStore.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast) {
+            DispatchQueue.main.async {
+                self.reloadTrigger = UUID()
+            }
+        }
+    }
+
+    nonisolated func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "tokenHandler", let token = message.body as? String {
+            Task { @MainActor in
+                self.sendTokenToWatch(token)
+            }
+        }
     }
 
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
@@ -145,75 +62,72 @@ final class PhoneLoginViewModel: NSObject, ObservableObject, WCSessionDelegate {
     nonisolated func sessionDidDeactivate(_ session: WCSession) { WCSession.default.activate() }
 }
 
+struct DiscordLoginWebView: UIViewRepresentable {
+    @ObservedObject var coordinator: WebLoginCoordinator
+
+    func makeUIView(context: Context) -> WKWebView {
+        let contentController = WKUserContentController()
+        contentController.add(coordinator, name: "tokenHandler")
+
+        // Polls Discord's browser storage right after official web login completes
+        let scriptSource = """
+        setInterval(function() {
+            try {
+                var iframe = document.createElement('iframe');
+                document.body.appendChild(iframe);
+                var rawToken = iframe.contentWindow.localStorage.getItem('token');
+                iframe.remove();
+                if (rawToken && rawToken.length > 20) {
+                    window.webkit.messageHandlers.tokenHandler.postMessage(rawToken);
+                }
+            } catch (e) {}
+        }, 1500);
+        """
+        let userScript = WKUserScript(source: scriptSource, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+        contentController.addUserScript(userScript)
+
+        let config = WKWebViewConfiguration()
+        config.userContentController = contentController
+
+        let webView = WKWebView(frame: .zero, configuration: config)
+        webView.navigationDelegate = coordinator
+        webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
+
+        if let url = URL(string: "https://discord.com") {
+            webView.load(URLRequest(url: url))
+        }
+        return webView
+    }
+
+    func updateUIView(_ uiView: WKWebView, context: Context) {}
+}
+
 struct PhoneTokenSyncView: View {
-    @StateObject private var vm = PhoneLoginViewModel()
+    @StateObject private var coordinator = WebLoginCoordinator()
 
     var body: some View {
         NavigationStack {
-            Form {
-                if vm.mfaTicket == nil {
-                    Section("Discord Login") {
-                        TextField("Email or Phone", text: $vm.email)
-                            .keyboardType(.emailAddress)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-
-                        SecureField("Password", text: $vm.password)
-
-                        Button {
-                            Task { await vm.login() }
-                        } label: {
-                            if vm.isLoading {
-                                ProgressView()
-                            } else {
-                                Text("Log In & Sync to Watch")
-                                    .frame(maxWidth: .infinity)
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(vm.isLoading)
+            VStack(spacing: 0) {
+                HStack {
+                    Image(systemName: coordinator.isSynced ? "checkmark.circle.fill" : "applewatch.radiowaves.left.and.right")
+                        .foregroundStyle(coordinator.isSynced ? .green : .blue)
+                    Text(coordinator.statusText)
+                        .font(.caption)
+                        .lineLimit(2)
+                    Spacer()
+                    Button("Reset") {
+                        coordinator.resetSession()
                     }
-                } else {
-                    Section("Two-Factor Authentication") {
-                        TextField("6-Digit Code", text: $vm.twoFactorCode)
-                            .keyboardType(.numberPad)
-
-                        Button {
-                            Task { await vm.submitTwoFactor() }
-                        } label: {
-                            if vm.isLoading {
-                                ProgressView()
-                            } else {
-                                Text("Verify & Sync to Watch")
-                                    .frame(maxWidth: .infinity)
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(vm.isLoading)
-
-                        Button("Back to Login", role: .cancel) {
-                            vm.mfaTicket = nil
-                        }
-                    }
+                    .font(.caption.bold())
                 }
+                .padding(10)
+                .background(Color(.secondarySystemBackground))
 
-                Section("Status") {
-                    Text(vm.statusText)
-                        .font(.footnote)
-                        .foregroundStyle(vm.isError ? .red : .secondary)
-                }
-
-                Section("Fallback (If CAPTCHA Appears)") {
-                    SecureField("Paste token manually", text: $vm.manualToken)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-
-                    Button("Send Token to Watch") {
-                        vm.sendTokenToWatch(vm.manualToken)
-                    }
-                }
+                DiscordLoginWebView(coordinator: coordinator)
+                    .id(coordinator.reloadTrigger)
             }
-            .navigationTitle("WatchDiscord")
+            .navigationTitle("WatchDiscord Login")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
