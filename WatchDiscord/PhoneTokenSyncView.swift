@@ -69,7 +69,6 @@ struct DiscordLoginWebView: UIViewRepresentable {
         let contentController = WKUserContentController()
         contentController.add(coordinator, name: "tokenHandler")
 
-        // Polls Discord's browser storage right after official web login completes
         let scriptSource = """
         setInterval(function() {
             try {
@@ -91,7 +90,7 @@ struct DiscordLoginWebView: UIViewRepresentable {
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = coordinator
-        webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
+        webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"
 
         if let url = URL(string: "https://discord.com") {
             webView.load(URLRequest(url: url))
