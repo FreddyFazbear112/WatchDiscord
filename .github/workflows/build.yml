@@ -1,0 +1,50 @@
+name: Build WatchDiscord
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+      - name: Archive iOS app
+        run: xcodebuild -project WatchDiscord.xcodeproj -scheme WatchDiscord -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/WatchDiscord-iOS.xcarchive" archive CODE_SIGNING_ALLOWED=NO
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p "$RUNNER_TEMP/Payload"
+          cp -R "$RUNNER_TEMP/WatchDiscord-iOS.xcarchive/Products/Applications/WatchDiscord.app" "$RUNNER_TEMP/Payload/WatchDiscord.app"
+          cd "$RUNNER_TEMP"
+          zip -qry WatchDiscord-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WatchDiscord-iOS-unsigned-ipa
+          path: ${{ runner.temp }}/WatchDiscord-unsigned.ipa
+          if-no-files-found: error
+
+  build-watchos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+      - name: Archive watchOS app
+        run: xcodebuild -project WatchDiscord.xcodeproj -scheme WatchDiscordWatch -destination 'generic/platform=watchOS' -archivePath "$RUNNER_TEMP/WatchDiscord-watchOS.xcarchive" archive CODE_SIGNING_ALLOWED=NO
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WatchDiscord-watchOS-archive
+          path: ${{ runner.temp }}/WatchDiscord-watchOS.xcarchive
+          if-no-files-found: error
