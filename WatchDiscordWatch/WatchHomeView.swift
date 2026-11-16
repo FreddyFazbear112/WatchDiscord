@@ -16,46 +16,67 @@ struct WatchHomeView: View {
                             .font(.system(size: 12, weight: .black, design: .rounded))
                             .tracking(1.8)
                             .foregroundStyle(WatchPalette.accent)
-                        Text("Your wrist. Your Discord.")
+                        Text("Discord on your wrist")
                             .font(.system(size: 17, weight: .bold, design: .rounded))
-                        Text("Companion dashboard")
+                        Text("Personal-account companion")
                             .font(.system(size: 10))
                             .foregroundStyle(.secondary)
                     }
                     .padding(.bottom, 3)
 
                     NavigationLink {
-                        WatchSectionView(title: "Inbox", symbol: "bubble.left.and.bubble.right.fill", description: "Your direct messages and recent conversations will appear here when the supported account connection is available.")
+                        WatchGuideView(
+                            title: "Get Discord alerts",
+                            symbol: "bell.badge.fill",
+                            steps: [
+                                "On iPhone, open Settings → Notifications → Discord.",
+                                "Turn on Allow Notifications and choose the alert types you want.",
+                                "Open the Watch app on iPhone → Notifications.",
+                                "Find Discord and enable notification mirroring."
+                            ],
+                            note: "When your iPhone is locked or asleep, eligible Discord alerts can appear on your watch. Tap an alert to view it. Reply options depend on the notification actions Discord and watchOS provide."
+                        )
                     } label: {
-                        WatchDashboardTile(title: "Inbox", subtitle: "Direct messages", symbol: "bubble.left.and.bubble.right.fill", tint: .indigo)
+                        WatchDashboardTile(title: "Discord notifications", subtitle: "Read alerts and use available replies", symbol: "bell.badge.fill", tint: .orange)
                     }
 
                     NavigationLink {
-                        WatchSectionView(title: "Servers", symbol: "person.3.fill", description: "Your servers and channels will be organized here after account setup and supported data access.")
+                        WatchGuideView(
+                            title: "What WatchCord can do",
+                            symbol: "applewatch",
+                            steps: [
+                                "Use your existing Discord account in the official Discord app on iPhone.",
+                                "Let Apple Watch mirror eligible Discord notifications.",
+                                "Use any reply actions shown on a notification, when available."
+                            ],
+                            note: "WatchCord does not currently have access to your personal DM inbox. Discord does not provide third-party apps a supported API for reading personal DMs or sending as your user account."
+                        )
                     } label: {
-                        WatchDashboardTile(title: "Servers", subtitle: "Communities and channels", symbol: "person.3.fill", tint: .purple)
+                        WatchDashboardTile(title: "How it works", subtitle: "Your account, with platform limits", symbol: "info.circle.fill", tint: .indigo)
                     }
 
                     NavigationLink {
-                        WatchSectionView(title: "Activity", symbol: "bell.badge.fill", description: "WatchCord can show notifications delivered to WatchCord. It cannot intercept or replace notifications mirrored from the official Discord iPhone app.")
+                        WatchGuideView(
+                            title: "Voice calls",
+                            symbol: "phone.fill",
+                            steps: [
+                                "Start or answer Discord voice calls in the official Discord app.",
+                                "Use the audio device controls available on your iPhone or connected headset."
+                            ],
+                            note: "WatchCord cannot act as an independent Discord voice client or control a personal-account call."
+                        )
                     } label: {
-                        WatchDashboardTile(title: "Activity", subtitle: "Mentions and updates", symbol: "bell.badge.fill", tint: .orange)
-                    }
-
-                    NavigationLink {
-                        WatchSectionView(title: "Voice", symbol: "phone.fill", description: "For voice calls, open the relevant conversation in Discord's official app. WatchCord does not connect to Discord voice as a personal-account client.")
-                    } label: {
-                        WatchDashboardTile(title: "Voice", subtitle: "Call handoff", symbol: "phone.fill", tint: .green)
+                        WatchDashboardTile(title: "Voice", subtitle: "Use Discord's official call experience", symbol: "phone.fill", tint: .green)
                     }
 
                     VStack(alignment: .leading, spacing: 5) {
-                        Label("IPHONE CONNECTION", systemImage: "iphone")
+                        Label("NO FAKE INBOX", systemImage: "checkmark.shield")
                             .font(.system(size: 9, weight: .bold))
                             .tracking(1)
                             .foregroundStyle(WatchPalette.accent)
-                        Text("Finish Discord sign-in in the iPhone app.")
+                        Text("This app won't show invented conversations or pretend your DMs are synced.")
                             .font(.system(size: 11, weight: .medium))
-                        Text("Live messages will appear once secure sync is connected.")
+                        Text("Your actual Discord alerts are handled by iOS and watchOS notification mirroring.")
                             .font(.system(size: 9))
                             .foregroundStyle(.secondary)
                     }
@@ -88,7 +109,7 @@ private struct WatchDashboardTile: View {
                 .background(tint.opacity(0.16), in: RoundedRectangle(cornerRadius: 9))
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.system(size: 13, weight: .bold))
-                Text(subtitle).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)
+                Text(subtitle).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(2)
             }
             Spacer(minLength: 0)
             Image(systemName: "chevron.right")
@@ -101,22 +122,39 @@ private struct WatchDashboardTile: View {
     }
 }
 
-private struct WatchSectionView: View {
+private struct WatchGuideView: View {
     let title: String
     let symbol: String
-    let description: String
+    let steps: [String]
+    let note: String
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 12) {
                 Image(systemName: symbol)
-                    .font(.system(size: 30, weight: .semibold))
+                    .font(.system(size: 28, weight: .semibold))
                     .foregroundStyle(WatchPalette.accent)
-                Text(title).font(.headline)
-                Text(description)
-                    .font(.caption2)
+                    .frame(maxWidth: .infinity)
+                Text(title)
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                    HStack(alignment: .top, spacing: 8) {
+                        Text("\(index + 1)")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(WatchPalette.accent)
+                        Text(step)
+                            .font(.caption2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                Text(note)
+                    .font(.system(size: 10))
                     .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(WatchPalette.panel, in: RoundedRectangle(cornerRadius: 12))
             }
             .padding(12)
         }
