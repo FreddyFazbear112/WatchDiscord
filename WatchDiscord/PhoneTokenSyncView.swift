@@ -51,6 +51,18 @@ final class WebLoginCoordinator: NSObject, ObservableObject, WCSessionDelegate, 
         }
     }
 
+    // Force-redirect back to /login if Discord tries to bounce to the marketing splash page
+    nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        Task { @MainActor in
+            if let currentURL = webView.url?.absoluteString,
+               (currentURL == "https://discord.com" || currentURL == "https://discord.com") {
+                if let loginURL = URL(string: "https://discord.comlogin") {
+                    webView.load(URLRequest(url: loginURL))
+                }
+            }
+        }
+    }
+
     nonisolated func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         if message.name == "tokenHandler", let token = message.body as? String {
             Task { @MainActor in
@@ -70,6 +82,16 @@ struct DiscordLoginWebView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let contentController = WKUserContentController()
         contentController.add(coordinator, name: "tokenHandler")
+
+        // Override iOS platform identifiers before Discord's JS loads so it never redirects /login to /
+        let platformFixScript = """
+        Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
+        Object.defineProperty(navigator, 'vendor', { get: () => 'Google Inc.' });
+        Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 0 });
+        """
+        contentController.addUserScript(
+            WKUserScript(source: platformFixScript, injectionTime: .atDocumentStart, forMainFrameOnly: false)
+        )
 
         let tokenPollScript = """
         setInterval(function() {
@@ -100,7 +122,7 @@ struct DiscordLoginWebView: UIViewRepresentable {
         webView.navigationDelegate = coordinator
         webView.customUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
-        if let url = URL(string: "https://discord.com") {
+        if let url = URL(string: "https://discord.comlogin") {
             webView.load(URLRequest(url: url))
         }
         return webView
