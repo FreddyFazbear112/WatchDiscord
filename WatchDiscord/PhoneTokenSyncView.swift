@@ -3,7 +3,7 @@ import WebKit
 import WatchConnectivity
 
 @MainActor
-final class WebLoginCoordinator: NSObject, ObservableObject, WCSessionDelegate, WKNavigationDelegate, WKScriptMessageHandler {
+final class WebLoginCoordinator: NSObject, ObservableObject, WCSessionDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     @Published var statusText = "Sign in below to auto-sync to your Watch"
     @Published var isSynced = false
     @Published var reloadTrigger = UUID()
@@ -51,16 +51,17 @@ final class WebLoginCoordinator: NSObject, ObservableObject, WCSessionDelegate, 
         }
     }
 
-    // Force-redirect back to /login if Discord tries to bounce to the marketing splash page
-    nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        Task { @MainActor in
-            if let currentURL = webView.url?.absoluteString,
-               (currentURL == "https://discord.com" || currentURL == "https://discord.com") {
-                if let loginURL = URL(string: "https://discord.comlogin") {
-                    webView.load(URLRequest(url: loginURL))
-                }
-            }
+    // Allow CAPTCHA / OAuth popups to render inside the same WebView instead of failing silently
+    nonisolated func webView(
+        _ webView: WKWebView,
+        createWebViewWith configuration: WKWebViewConfiguration,
+        for navigationAction: WKNavigationAction,
+        windowFeatures: WKWindowFeatures
+    ) -> WKWebView? {
+        if navigationAction.targetFrame == nil {
+            webView.load(navigationAction.request)
         }
+        return nil
     }
 
     nonisolated func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -83,31 +84,20 @@ struct DiscordLoginWebView: UIViewRepresentable {
         let contentController = WKUserContentController()
         contentController.add(coordinator, name: "tokenHandler")
 
-        // Override iOS platform identifiers before Discord's JS loads so it never redirects /login to /
-        let platformFixScript = """
-        Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
-        Object.defineProperty(navigator, 'vendor', { get: () => 'Google Inc.' });
-        Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 0 });
-        """
-        contentController.addUserScript(
-            WKUserScript(source: platformFixScript, injectionTime: .atDocumentStart, forMainFrameOnly: false)
-        )
-
-        let tokenPollScript = """
-        setInterval(function() {
-            try {
-                var iframe = document.createElement('iframe');
-                document.body.appendChild(iframe);
-                var rawToken = iframe.contentWindow.localStorage.getItem('token');
-                iframe.remove();
-                if (rawToken && rawToken.length > 20) {
-                    window.webkit.messageHandlers.tokenHandler.postMessage(rawToken);
+        // Intercept XMLHttpRequest / fetch Authorization headers directly during login
+        let tokenCaptureScript = """
+        (function() {
+            const origSetHeader = XMLHttpRequest.prototype.setRequestHeader;
+            XMLHttpRequest.prototype.setRequestHeader = function(header, value) {
+                if (header && header.toLowerCase() === 'authorization' && value && value.length > 20) {
+                    window.webkit.messageHandlers.tokenHandler.postMessage(value);
                 }
-            } catch (e) {}
-        }, 1200);
+                return origSetHeader.apply(this, arguments);
+            };
+        })();
         """
         contentController.addUserScript(
-            WKUserScript(source: tokenPollScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+            WKUserScript(source: tokenCaptureScript, injectionTime: .atDocumentStart, forMainFrameOnly: false)
         )
 
         let prefs = WKWebpagePreferences()
@@ -117,12 +107,15 @@ struct DiscordLoginWebView: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         config.userContentController = contentController
         config.defaultWebpagePreferences = prefs
+        config.preferences.javaScriptCanOpenWindowsAutomatically = true
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = coordinator
-        webView.customUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+        webView.uiDelegate = coordinator
+        webView.isOpaque = false
+        webView.backgroundColor = UIColor(red: 0.19, green: 0.20, blue: 0.22, alpha: 1.0)
 
-        if let url = URL(string: "https://discord.comlogin") {
+        if let url = URL(string: "https://discord.com") {
             webView.load(URLRequest(url: url))
         }
         return webView
