@@ -16,6 +16,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.personal.watchdiscord
         INFOPLIST_KEY_CFBundleDisplayName: WatchDiscord
         GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
     dependencies:
       - target: WatchDiscordWatch
         embed: true
@@ -32,3 +33,4 @@ targets:
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.personal.watchdiscord
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Used for Discord voice channels and calls."
         GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
