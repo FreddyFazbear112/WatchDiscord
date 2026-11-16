@@ -1,69 +1,42 @@
-name: Build WatchDiscord
+name: Build WatchDiscord IPA
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
-
-permissions:
-  contents: read
 
 jobs:
-  build-ios:
-    runs-on: macos-15
+  build:
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install XcodeGen
-        run: brew install xcodegen
-      - name: Generate project
-        run: xcodegen generate
-      - name: Archive iOS app with embedded watch app
-        run: |
-          xcodebuild -project WatchDiscord.xcodeproj -scheme WatchDiscord \
-            -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/WatchDiscord-iOS.xcarchive" \
-            archive CODE_SIGNING_ALLOWED=NO
-      - name: Verify embedded watch companion
-        run: |
-          APP="$RUNNER_TEMP/WatchDiscord-iOS.xcarchive/Products/Applications/WatchDiscord.app"
-          test -d "$APP" || { echo "iOS app archive missing"; exit 1; }
-          echo "Embedded app bundles:"
-          find "$APP" -maxdepth 4 -type d -name '*.app' -print
-          WATCH_APP="$(find "$APP/Watch" -maxdepth 2 -type d -name '*.app' -print -quit 2>/dev/null || true)"
-          if [ -z "$WATCH_APP" ]; then
-            echo "::error::No watchOS companion found inside WatchDiscord.app/Watch."
-            echo "Check the XcodeGen watch target dependency and embed build phase."
-            exit 1
-          fi
-          echo "Verified watch companion: $WATCH_APP"
-          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$WATCH_APP/Info.plist"
-      - name: Package combined unsigned IPA
-        run: |
-          mkdir -p "$RUNNER_TEMP/Payload"
-          cp -R "$RUNNER_TEMP/WatchDiscord-iOS.xcarchive/Products/Applications/WatchDiscord.app" "$RUNNER_TEMP/Payload/WatchDiscord.app"
-          cd "$RUNNER_TEMP"
-          zip -qry WatchDiscord-unsigned.ipa Payload
-          unzip -l WatchDiscord-unsigned.ipa | grep -E 'Payload/WatchDiscord.app/Watch/.*\.app/'
-      - uses: actions/upload-artifact@v4
-        with:
-          name: WatchDiscord-iOS-with-watch-companion-unsigned-ipa
-          path: ${{ runner.temp }}/WatchDiscord-unsigned.ipa
-          if-no-files-found: error
+      - name: Checkout Repo
+        uses: actions/checkout@v4
 
-  build-watchos:
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install XcodeGen
-        run: brew install xcodegen
-      - name: Generate project
-        run: xcodegen generate
-      - name: Archive watchOS app
-        run: xcodebuild -project WatchDiscord.xcodeproj -scheme WatchDiscordWatch -destination 'generic/platform=watchOS' -archivePath "$RUNNER_TEMP/WatchDiscord-watchOS.xcarchive" archive CODE_SIGNING_ALLOWED=NO
-      - uses: actions/upload-artifact@v4
+      - name: Install XcodeGen & Generate Project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Build Unsigned iOS + watchOS Archive
+        run: |
+          xcodebuild archive \
+            -project WatchDiscord.xcodeproj \
+            -scheme WatchDiscord \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath $RUNNER_TEMP/WatchDiscord.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package IPA (Keeping Watch App Nested)
+        run: |
+          mkdir -p Payload
+          cp -r $RUNNER_TEMP/WatchDiscord.xcarchive/Products/Applications/WatchDiscord.app Payload/
+          zip -r WatchDiscord.ipa Payload
+
+      - name: Upload WatchDiscord.ipa
+        uses: actions/upload-artifact@v4
         with:
-          name: WatchDiscord-watchOS-archive
-          path: ${{ runner.temp }}/WatchDiscord-watchOS.xcarchive
-          if-no-files-found: error
+          name: WatchDiscord-IPA
+          path: WatchDiscord.ipa
