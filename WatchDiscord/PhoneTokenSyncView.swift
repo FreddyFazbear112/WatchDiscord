@@ -20,7 +20,7 @@ final class WebLoginCoordinator: NSObject, ObservableObject, WCSessionDelegate, 
         let cleaned = rawToken
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "\"", with: "")
-        guard !cleaned.isEmpty, cleaned != "null", cleaned != "undefined" else { return }
+        guard !cleaned.isEmpty, cleaned != "null", cleaned != "undefined", cleaned.count > 20 else { return }
         guard !isSynced else { return }
 
         isSynced = true
@@ -51,7 +51,6 @@ final class WebLoginCoordinator: NSObject, ObservableObject, WCSessionDelegate, 
         }
     }
 
-    // Allow CAPTCHA / OAuth popups to render inside the same WebView instead of failing silently
     nonisolated func webView(
         _ webView: WKWebView,
         createWebViewWith configuration: WKWebViewConfiguration,
@@ -84,20 +83,35 @@ struct DiscordLoginWebView: UIViewRepresentable {
         let contentController = WKUserContentController()
         contentController.add(coordinator, name: "tokenHandler")
 
-        // Intercept XMLHttpRequest / fetch Authorization headers directly during login
-        let tokenCaptureScript = """
+        // Open-source client method: hook Storage.prototype.setItem + XHR before Discord boots
+        let openSourceHook = """
         (function() {
-            const origSetHeader = XMLHttpRequest.prototype.setRequestHeader;
-            XMLHttpRequest.prototype.setRequestHeader = function(header, value) {
-                if (header && header.toLowerCase() === 'authorization' && value && value.length > 20) {
+            const origSetItem = Storage.prototype.setItem;
+            Storage.prototype.setItem = function(key, value) {
+                if (key === 'token' && value && value.length > 20) {
                     window.webkit.messageHandlers.tokenHandler.postMessage(value);
                 }
-                return origSetHeader.apply(this, arguments);
+                return origSetItem.apply(this, arguments);
+            };
+
+            const origOpen = XMLHttpRequest.prototype.open;
+            XMLHttpRequest.prototype.open = function(method, url) {
+                this.addEventListener('load', function() {
+                    try {
+                        if (typeof url === 'string' && url.includes('/auth/')) {
+                            const data = JSON.parse(this.responseText);
+                            if (data && data.token) {
+                                window.webkit.messageHandlers.tokenHandler.postMessage(data.token);
+                            }
+                        }
+                    } catch (e) {}
+                });
+                return origOpen.apply(this, arguments);
             };
         })();
         """
         contentController.addUserScript(
-            WKUserScript(source: tokenCaptureScript, injectionTime: .atDocumentStart, forMainFrameOnly: false)
+            WKUserScript(source: openSourceHook, injectionTime: .atDocumentStart, forMainFrameOnly: false)
         )
 
         let prefs = WKWebpagePreferences()
@@ -112,10 +126,10 @@ struct DiscordLoginWebView: UIViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = coordinator
         webView.uiDelegate = coordinator
-        webView.isOpaque = false
-        webView.backgroundColor = UIColor(red: 0.19, green: 0.20, blue: 0.22, alpha: 1.0)
+        webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"
 
-        if let url = URL(string: "https://discord.com") {
+        // ptb.discord.com/login bypasses the mobile App Store splash page redirect completely
+        if let url = URL(string: "https://ptb.discord.com/login") {
             webView.load(URLRequest(url: url))
         }
         return webView
