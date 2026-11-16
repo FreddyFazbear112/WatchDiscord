@@ -14,11 +14,13 @@ jobs:
 
       - name: Install XcodeGen & Generate Project
         run: |
+          set -e
           brew install xcodegen
           xcodegen generate
 
       - name: Build Unsigned iOS + watchOS Archive
         run: |
+          set -e
           xcodebuild archive \
             -project WatchDiscord.xcodeproj \
             -scheme WatchDiscord \
@@ -31,6 +33,7 @@ jobs:
 
       - name: Package IPA (Keeping Watch App Nested)
         run: |
+          set -e
           mkdir -p Payload
           cp -r $RUNNER_TEMP/WatchDiscord.xcarchive/Products/Applications/WatchDiscord.app Payload/
           zip -r WatchDiscord.ipa Payload
