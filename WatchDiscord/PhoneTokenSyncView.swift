@@ -4,7 +4,7 @@ import WatchConnectivity
 
 @MainActor
 final class WebLoginCoordinator: NSObject, ObservableObject, WCSessionDelegate, WKNavigationDelegate, WKScriptMessageHandler {
-    @Published var statusText = "Sign in on Discord below to auto-sync to your Watch"
+    @Published var statusText = "Sign in below to auto-sync to your Watch"
     @Published var isSynced = false
     @Published var reloadTrigger = UUID()
 
@@ -27,7 +27,7 @@ final class WebLoginCoordinator: NSObject, ObservableObject, WCSessionDelegate, 
         let payload = ["discord_user_token": cleaned]
         do {
             try WCSession.default.updateApplicationContext(payload)
-            statusText = "Logged in & synced! Open Discord on your Apple Watch."
+            statusText = "Synced! Open Discord on your Apple Watch."
         } catch {
             isSynced = false
             statusText = "Sync error: \(error.localizedDescription)"
@@ -40,9 +40,11 @@ final class WebLoginCoordinator: NSObject, ObservableObject, WCSessionDelegate, 
 
     func resetSession() {
         isSynced = false
-        statusText = "Sign in on Discord below to auto-sync to your Watch"
-        let dataStore = WKWebsiteDataStore.default()
-        dataStore.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast) {
+        statusText = "Sign in below to auto-sync to your Watch"
+        WKWebsiteDataStore.default().removeData(
+            ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
+            modifiedSince: .distantPast
+        ) {
             DispatchQueue.main.async {
                 self.reloadTrigger = UUID()
             }
@@ -69,7 +71,7 @@ struct DiscordLoginWebView: UIViewRepresentable {
         let contentController = WKUserContentController()
         contentController.add(coordinator, name: "tokenHandler")
 
-        let scriptSource = """
+        let tokenPollScript = """
         setInterval(function() {
             try {
                 var iframe = document.createElement('iframe');
@@ -80,17 +82,23 @@ struct DiscordLoginWebView: UIViewRepresentable {
                     window.webkit.messageHandlers.tokenHandler.postMessage(rawToken);
                 }
             } catch (e) {}
-        }, 1500);
+        }, 1200);
         """
-        let userScript = WKUserScript(source: scriptSource, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
-        contentController.addUserScript(userScript)
+        contentController.addUserScript(
+            WKUserScript(source: tokenPollScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+        )
+
+        let prefs = WKWebpagePreferences()
+        prefs.preferredContentMode = .desktop
+        prefs.allowsContentJavaScript = true
 
         let config = WKWebViewConfiguration()
         config.userContentController = contentController
+        config.defaultWebpagePreferences = prefs
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = coordinator
-        webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"
+        webView.customUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
         if let url = URL(string: "https://discord.com") {
             webView.load(URLRequest(url: url))
