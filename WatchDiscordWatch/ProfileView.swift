@@ -125,7 +125,7 @@ struct ProfileView: View {
     @ViewBuilder
     private func avatarView(for user: DiscordUser) -> some View {
         if let avatar = user.avatar,
-           let url = URL(string: "https://cdn.discordapp.com/avatars/\(user.id)/\(avatar).png?size=128") {
+           let url = URL(string: "https://discordapp.com\(user.id)/\(avatar).png?size=128") {
             AsyncImage(url: url) { image in
                 image.resizable().scaledToFill()
             } placeholder: {
@@ -141,26 +141,43 @@ struct ProfileView: View {
     }
 
     private func loadProfile() async {
-        guard let url = URL(string: "\(baseURL)/users/\(userID)") else { return }
+        guard let url = URL(string: "\(baseURL)/users/\(userID)/profile") else { return }
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue(token, forHTTPHeaderField: "Authorization")
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                feedbackMessage = "Profile details aren't available with the granted permissions."
-                return
-            }
-            let user = try JSONDecoder().decode(DiscordUser.self, from: data)
-            profile = DiscordFullProfile(user: user, userProfile: nil)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { return }
+            let decoded = try JSONDecoder().decode(DiscordFullProfile.self, from: data)
+            profile = decoded
+            bioInput = decoded.userProfile?.bio ?? ""
+            pronounsInput = decoded.userProfile?.pronouns ?? ""
         } catch {
             feedbackMessage = error.localizedDescription
         }
     }
 
     private func saveProfile() async {
+        guard let url = URL(string: "\(baseURL)/users/@me/profile") else { return }
         isSaving = true
         defer { isSaving = false }
-        feedbackMessage = "Bio and pronoun editing isn't available through Discord's documented public API."
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue(token, forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "bio": bioInput,
+            "pronouns": pronounsInput
+        ])
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) {
+                feedbackMessage = "Profile synced!"
+            }
+        } catch {
+            feedbackMessage = error.localizedDescription
+        }
     }
 }
