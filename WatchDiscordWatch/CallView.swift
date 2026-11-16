@@ -2,11 +2,10 @@ import SwiftUI
 
 struct CallView: View {
     @StateObject private var callManager: VoiceCallManager
-    @Environment(\.openURL) private var openURL
-
+    
     let channelName: String
     let isDM: Bool
-
+    
     init(
         token: String,
         guildID: String?,
@@ -24,59 +23,99 @@ struct CallView: View {
             )
         )
     }
-
+    
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
-                Image(systemName: isDM ? "phone.fill" : "speaker.wave.2.fill")
-                    .font(.title2)
-                    .foregroundStyle(.indigo)
-
-                Text(channelName)
-                    .font(.headline)
-                    .lineLimit(1)
-
-                Text(callManager.status)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-
+                VStack(spacing: 4) {
+                    Image(systemName: isDM ? "phone.fill" : "speaker.wave.2.fill")
+                        .font(.title2)
+                        .foregroundStyle(callManager.isConnected ? .green : .secondary)
+                    
+                    Text(channelName)
+                        .font(.headline)
+                        .lineLimit(1)
+                    
+                    Text(callManager.status)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 4)
+                
                 if let error = callManager.lastError {
                     Text(error)
                         .font(.caption2)
                         .foregroundStyle(.red)
                         .multilineTextAlignment(.center)
+                        .padding(.horizontal, 4)
                 }
-
-                Button {
-                    guard let url = callManager.discordChannelURL else {
-                        callManager.reportOpenFailure()
-                        return
+                
+                HStack(spacing: 14) {
+                    Button {
+                        callManager.toggleMute()
+                    } label: {
+                        Image(systemName: callManager.isMuted ? "mic.slash.fill" : "mic.fill")
+                            .font(.body)
+                            .frame(width: 44, height: 44)
+                            .background(callManager.isMuted ? Color.red.opacity(0.8) : Color.gray.opacity(0.3))
+                            .clipShape(Circle())
                     }
-                    openURL(url) { accepted in
-                        if accepted {
-                            callManager.markDiscordOpened()
-                        } else {
-                            callManager.reportOpenFailure()
+                    .buttonStyle(.plain)
+                    .disabled(!callManager.isConnected)
+                    
+                    Button {
+                        callManager.toggleDeafen()
+                    } label: {
+                        Image(systemName: callManager.isDeafened ? "speaker.slash.fill" : "headphones")
+                            .font(.body)
+                            .frame(width: 44, height: 44)
+                            .background(callManager.isDeafened ? Color.red.opacity(0.8) : Color.gray.opacity(0.3))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!callManager.isConnected)
+                }
+                
+                if isDM {
+                    Button {
+                        Task {
+                            await callManager.ringDMCall()
                         }
+                    } label: {
+                        Label("Ring", systemImage: "bell.and.waves.left.and.right.fill")
+                            .font(.footnote.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.blue)
+                    .disabled(!callManager.isConnected)
+                }
+                
+                Button(role: callManager.isConnected ? .destructive : nil) {
+                    if callManager.isConnected {
+                        callManager.disconnect()
+                    } else {
+                        callManager.connect()
                     }
                 } label: {
-                    Label("Open in Discord", systemImage: "arrow.up.forward.app")
-                        .font(.footnote.weight(.bold))
-                        .frame(maxWidth: .infinity)
+                    Label(
+                        callManager.isConnected ? "Leave Call" : "Join Call",
+                        systemImage: callManager.isConnected ? "phone.down.fill" : "phone.fill"
+                    )
+                    .font(.footnote.weight(.bold))
+                    .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.indigo)
-
-                Text("Join, mute, deafen, and leave using Discord's own call controls.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+                .tint(callManager.isConnected ? .red : .green)
             }
             .padding(.horizontal, 6)
         }
         .navigationTitle("Voice")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            callManager.connect()
+        }
         .onDisappear {
             callManager.disconnect()
         }
