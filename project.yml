@@ -14,10 +14,10 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.personal.watchdiscord
+        GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
-        GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: WatchDiscordWatch
         embed: true
@@ -27,14 +27,11 @@ targets:
     platform: watchOS
     sources:
       - path: WatchDiscordWatch
-    info:
-      path: WatchDiscordWatch/Info.plist
-      properties:
-        CFBundleDisplayName: WatchDiscord
-        WKApplication: true
-        WKCompanionAppBundleIdentifier: com.personal.watchdiscord.VS635RJZ7M
-        NSMicrophoneUsageDescription: Used for voice calls on Discord.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.personal.watchdiscord.watchkitapp
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: WatchDiscord
+        INFOPLIST_KEY_WKApplication: YES
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.personal.watchdiscord.VS635RJZ7M
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: Used for voice calls on Discord.
