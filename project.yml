@@ -27,11 +27,16 @@ targets:
     platform: watchOS
     sources:
       - path: WatchDiscordWatch
+    info:
+      path: WatchDiscordWatch/GeneratedWatchInfo.plist
+      properties:
+        CFBundleDisplayName: WatchDiscord
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.personal.watchdiscord.VS635RJZ7M
+        NSMicrophoneUsageDescription: Used for voice calls on Discord.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.personal.watchdiscord.VS635RJZ7M.watchkitapp
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: WatchDiscord
-        INFOPLIST_KEY_WKApplication: YES
-        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.personal.watchdiscord.VS635RJZ7M
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: Used for voice calls on Discord.
+        GENERATE_INFOPLIST_FILE: NO
