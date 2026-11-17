@@ -29,7 +29,7 @@ targets:
       - path: WatchDiscordWatch
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.personal.watchdiscord.watchkitapp
+        PRODUCT_BUNDLE_IDENTIFIER: com.personal.watchdiscord.VS635RJZ7M.watchkitapp
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: WatchDiscord
         INFOPLIST_KEY_WKApplication: YES
