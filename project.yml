@@ -11,8 +11,6 @@ targets:
     platform: iOS
     sources:
       - path: WatchDiscord
-        excludes:
-          - "**/Info.plist"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.personal.watchdiscord
@@ -25,12 +23,10 @@ targets:
         embed: true
 
   WatchDiscordWatch:
-    type: application.watchapp2
+    type: application
     platform: watchOS
     sources:
       - path: WatchDiscordWatch
-        excludes:
-          - "**/Info.plist"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.personal.watchdiscord.watchkitapp
