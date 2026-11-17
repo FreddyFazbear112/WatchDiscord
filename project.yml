@@ -27,6 +27,8 @@ targets:
     platform: watchOS
     sources:
       - path: WatchDiscordWatch
+        excludes:
+          - "**/Info.plist"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.personal.watchdiscord.watchkitapp
