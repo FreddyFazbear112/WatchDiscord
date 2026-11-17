@@ -25,18 +25,39 @@ targets:
   WatchDiscordWatch:
     type: application.watchapp2
     platform: watchOS
-    sources:
-      - path: WatchDiscordWatch
-    info:
-      path: WatchDiscordWatch/GeneratedWatchInfo.plist
-      properties:
-        CFBundleDisplayName: WatchDiscord
-        CFBundleShortVersionString: "1.0"
-        CFBundleVersion: "1"
-        WKApplication: true
-        WKCompanionAppBundleIdentifier: com.personal.watchdiscord.VS635RJZ7M
-        NSMicrophoneUsageDescription: Used for voice calls on Discord.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.personal.watchdiscord.VS635RJZ7M.watchkitapp
         GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: WatchDiscordWatch/WatchApp-Info.plist
+      properties:
+        CFBundleDisplayName: WatchDiscord
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        WKWatchKitApp: true
+        WKCompanionAppBundleIdentifier: com.personal.watchdiscord.VS635RJZ7M
+    dependencies:
+      - target: WatchDiscordWatchExtension
+        embed: true
+
+  WatchDiscordWatchExtension:
+    type: watchkit2-extension
+    platform: watchOS
+    sources:
+      - path: WatchDiscordWatch
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.personal.watchdiscord.VS635RJZ7M.watchkitapp.watchkitextension
+        GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: WatchDiscordWatch/WatchExt-Info.plist
+      properties:
+        CFBundleDisplayName: WatchDiscord
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionAttributes:
+            WKAppBundleIdentifier: com.personal.watchdiscord.VS635RJZ7M.watchkitapp
+          NSExtensionPointIdentifier: com.apple.watchkit
+        NSMicrophoneUsageDescription: Used for voice calls on Discord.
