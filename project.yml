@@ -23,7 +23,7 @@ targets:
         embed: true
 
   WatchDiscordWatch:
-    type: application
+    type: application.watchapp2
     platform: watchOS
     sources:
       - path: WatchDiscordWatch
