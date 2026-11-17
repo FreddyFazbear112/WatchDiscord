@@ -1,24 +1,25 @@
 name: Build WatchDiscord IPA
 
 on:
-  workflow_dispatch:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: macos-latest
+    timeout-minutes: 12
     steps:
-      - name: Checkout Repo
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install XcodeGen & Generate Project
-        run: |
-          set -e
-          brew install xcodegen
-          xcodegen generate
+      - name: Install XcodeGen
+        run: brew install xcodegen
 
-      - name: Build Unsigned iOS + watchOS Archive
+      - name: Generate Xcode Project
+        run: xcodegen generate
+
+      - name: Build Unsigned IPA
         run: |
           set -e
           xcodebuild archive \
@@ -31,14 +32,11 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
-      - name: Package IPA (Keeping Watch App Nested)
-        run: |
-          set -e
           mkdir -p Payload
-          cp -r $RUNNER_TEMP/WatchDiscord.xcarchive/Products/Applications/WatchDiscord.app Payload/
+          cp -r $RUNNER_TEMP/WatchDiscord.xcarchive/Products/Applications/*.app Payload/
           zip -r WatchDiscord.ipa Payload
 
-      - name: Upload WatchDiscord.ipa
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: WatchDiscord-IPA
