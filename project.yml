@@ -13,7 +13,7 @@ targets:
       - path: WatchDiscord
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.personal.watchdiscord
+        PRODUCT_BUNDLE_IDENTIFIER: com.personal.watchdiscord.VS635RJZ7M
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
