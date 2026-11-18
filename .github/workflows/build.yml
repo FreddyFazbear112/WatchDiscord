@@ -1,8 +1,6 @@
 name: Build WatchDiscord IPA
-
 on:
   workflow_dispatch:
-
 jobs:
   build:
     name: Build IPA
@@ -10,7 +8,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - run: brew install xcodegen && xcodegen generate
+      - run: brew install librsvg xcodegen && mkdir -p Assets.xcassets/AppIcon.appiconset && rsvg-convert -w 1024 -h 1024 AppIcon.svg -o Assets.xcassets/AppIcon.appiconset/AppIcon.png && printf '{"images":[{"filename":"AppIcon.png","idiom":"universal","platform":"ios","size":"1024x1024"},{"filename":"AppIcon.png","idiom":"universal","platform":"watchos","size":"1024x1024"}],"info":{"author":"xcode","version":1}}\n' > Assets.xcassets/AppIcon.appiconset/Contents.json && xcodegen generate
       - run: xcodebuild archive -project WatchDiscord.xcodeproj -scheme WatchDiscord -configuration Release -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/WatchDiscord.xcarchive" CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -quiet && mkdir -p Payload && cp -r "$RUNNER_TEMP/WatchDiscord.xcarchive/Products/Applications/"*.app Payload/ && zip -r WatchDiscord.ipa Payload
       - uses: actions/upload-artifact@v4
         with:
