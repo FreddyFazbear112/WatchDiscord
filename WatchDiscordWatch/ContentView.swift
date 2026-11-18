@@ -1,5 +1,33 @@
 import SwiftUI
 
+private extension Color {
+  static let discordBlurple = Color(
+    red: 88 / 255,
+    green: 101 / 255,
+    blue: 242 / 255
+  )
+  static let discordRed = Color(
+    red: 237 / 255,
+    green: 66 / 255,
+    blue: 69 / 255
+  )
+  static let discordGreen = Color(
+    red: 35 / 255,
+    green: 165 / 255,
+    blue: 90 / 255
+  )
+  static let discordPink = Color(
+    red: 235 / 255,
+    green: 69 / 255,
+    blue: 158 / 255
+  )
+  static let discordYellow = Color(
+    red: 254 / 255,
+    green: 231 / 255,
+    blue: 92 / 255
+  )
+}
+
 struct ContentView: View {
   @StateObject private var discord =
     DiscordService()
@@ -59,7 +87,7 @@ struct ContentView: View {
         systemImage: "iphone.and.arrow.forward"
       )
       .font(.footnote.weight(.semibold))
-      .foregroundStyle(Color(hex: "5865F2"))
+      .foregroundStyle(Color.discordBlurple)
 
       Text(
         "Open WatchDiscord on iPhone and "
@@ -93,7 +121,7 @@ struct ContentView: View {
       HStack(spacing: 10) {
         ZStack {
           Circle()
-            .fill(Color(hex: "5865F2"))
+            .fill(Color.discordBlurple)
             .frame(width: 30, height: 30)
           Image(
             systemName: "bubble.left.fill"
@@ -122,7 +150,7 @@ struct ContentView: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(
-              Color(hex: "ED4245"),
+              Color.discordRed,
               in: Capsule()
             )
         }
@@ -200,7 +228,7 @@ struct ContentView: View {
         } label: {
           HStack(spacing: 6) {
             Circle()
-              .fill(Color(hex: "23A55A"))
+              .fill(Color.discordGreen)
               .frame(width: 8, height: 8)
             Text(me.displayName)
               .font(.caption2.weight(.semibold))
@@ -225,7 +253,7 @@ struct ContentView: View {
           .foregroundStyle(.white)
           .padding(8)
           .background(
-            Color(hex: "5865F2").opacity(0.85),
+            Color.discordBlurple.opacity(0.85),
             in: Circle()
           )
       }
@@ -265,13 +293,16 @@ struct GuildAvatarView: View {
   }
 
   private var badgeColor: Color {
-    let palette = [
-      "5865F2", "EB459E", "57F287",
-      "FEE75C", "ED4245", "3BA55C"
+    let palette: [Color] = [
+      .discordBlurple,
+      .discordPink,
+      .discordGreen,
+      .discordYellow,
+      .discordRed
     ]
     let idx =
       abs(guild.id.hashValue) % palette.count
-    return Color(hex: palette[idx])
+    return palette[idx]
   }
 
   var body: some View {
@@ -315,7 +346,7 @@ struct DirectMessagesListView: View {
               ZStack {
                 Circle()
                   .fill(
-                    Color(hex: "5865F2")
+                    Color.discordBlurple
                       .opacity(0.3)
                   )
                   .frame(width: 28, height: 28)
@@ -385,38 +416,37 @@ struct GuildChannelsView: View {
       }
       .padding(.horizontal, 2)
     }
-    .background(
-      themeSync.backgroundGradient
-        .ignoresSafeArea()
-    )
-    .navigationTitle(guild.name)
-    .task {
-      await discord.loadChannels(
-        for: guild.id
-      )
-    }
-  }
-
-  @ViewBuilder
-  private func channelRow(
-    for channel: DiscordChannel
-  ) -> some View {
-    if channel.isVoice {
-      NavigationLink {
-        CallView(
-          token: token,
-          guildID: guild.id,
-          channelID: channel.id,
-          channelName: channel.displayName,
-          isDM: false
-        )
-      } label: {
-        HStack(spacing: 8) {
-          Image(
-            systemName: "speaker.wave.2.fill"
-          )
+.background(
+themeSync.backgroundGradient
+.ignoresSafeArea()
+)
+.navigationTitle(guild.name)
+.task {
+await discord.loadChannels(
+for: guild.id
+)
+}
+}
+@ViewBuilder
+private func channelRow(
+for channel: DiscordChannel
+) -> some View {
+if channel.isVoice {
+NavigationLink {
+CallView(
+token: token,
+guildID: guild.id,
+channelID: channel.id,
+channelName: channel.displayName,
+isDM: false
+)
+} label: {
+HStack(spacing: 8) {
+Image(
+systemName: "speaker.wave.2.fill"
+)
 .font(.caption)
-.foregroundStyle(Color(hex: "23A55A"))
+.foregroundStyle(Color.discordGreen)
 Text(channel.displayName)
 .font(
 .system(size: 14, weight: .medium)
@@ -490,18 +520,7 @@ preset: preset
 } label: {
 HStack {
 Circle()
-.fill(
-LinearGradient(
-colors: [
-Color(hex: preset.primaryHex),
-Color(
-hex: preset.secondaryHex
-)
-],
-startPoint: .topLeading,
-endPoint: .bottomTrailing
-)
-)
+.fill(Color.discordBlurple)
 .frame(width: 20, height: 20)
 Text(preset.name)
 }
