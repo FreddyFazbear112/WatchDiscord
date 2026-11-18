@@ -1,32 +1,32 @@
 import SwiftUI
 
 private extension Color {
-  static let discordBlurple = Color(
+  static let dcBlurple = Color(
     red: 88 / 255,
     green: 101 / 255,
     blue: 242 / 255
   )
-  static let discordRed = Color(
+  static let dcRed = Color(
     red: 242 / 255,
     green: 63 / 255,
     blue: 67 / 255
   )
-  static let discordGreen = Color(
+  static let dcGreen = Color(
     red: 35 / 255,
     green: 165 / 255,
     blue: 90 / 255
   )
-  static let discordCard = Color(
+  static let dcCard = Color(
     red: 30 / 255,
     green: 31 / 255,
     blue: 34 / 255
   )
-  static let discordBorder = Color(
+  static let dcBorder = Color(
     red: 49 / 255,
     green: 51 / 255,
     blue: 56 / 255
   )
-  static let discordBg = Color(
+  static let dcBg = Color(
     red: 17 / 255,
     green: 18 / 255,
     blue: 20 / 255
@@ -41,130 +41,100 @@ struct ContentView: View {
   @AppStorage("discord_user_token")
   private var savedToken = ""
 
-  private var isDemoMode: Bool {
+  private var isDemo: Bool {
     ProcessInfo.processInfo.arguments
       .contains("-DEMO_MODE")
   }
 
-  private var effectiveToken: String {
-    isDemoMode ? "demo_token" : savedToken
+  private var token: String {
+    isDemo ? "demo_token" : savedToken
   }
 
   var body: some View {
     NavigationStack {
       ScrollView {
         VStack(spacing: 6) {
-          if effectiveToken.isEmpty {
-            setupCard
+          if token.isEmpty {
+            Text(
+              "Open WatchDiscord on iPhone "
+              + "and tap 'Send to Watch'."
+            )
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .padding(10)
+            .background(
+              Color.dcCard,
+              in: RoundedRectangle(
+                cornerRadius: 14
+              )
+            )
           } else {
             if let err = discord.errorMessage {
               Text(err)
                 .font(.caption2)
-                .foregroundStyle(
-                  Color.discordRed
-                )
-                .padding(.horizontal, 4)
+                .foregroundStyle(Color.dcRed)
             }
-
-            accountTopBar
-            dmBannerButton
-
-            HStack {
-              Text("SERVERS")
-                .font(
-                  .system(
-                    size: 10,
-                    weight: .heavy
-                  )
-                )
-                .foregroundStyle(.secondary)
-                .tracking(0.8)
-              Spacer()
-            }
-            .padding(.horizontal, 6)
-            .padding(.top, 2)
-
-            ForEach(discord.guilds) { guild in
-              guildRow(for: guild)
+            topProfileBar
+            dmButton
+            sectionHeader("SERVERS")
+            ForEach(discord.guilds) { g in
+              guildButton(g)
             }
           }
         }
         .padding(.horizontal, 2)
         .padding(.bottom, 8)
       }
-      .background(
-        ZStack {
-          Color.discordBg
-          themeSync.backgroundGradient
-            .opacity(0.45)
-        }
-        .ignoresSafeArea()
-      )
+      .background(bgView)
       .navigationTitle("WatchDiscord")
-      .navigationBarTitleDisplayMode(
-        .inline
-      )
+      .navigationBarTitleDisplayMode(.inline)
       .refreshable { await startSession() }
-      .task(id: effectiveToken) {
+      .task(id: token) {
         await startSession()
       }
     }
   }
 
-  private var setupCard: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      Label(
-        "Connect Account",
-        systemImage: "iphone.and.arrow.forward"
-      )
-      .font(.footnote.weight(.bold))
-      .foregroundStyle(Color.discordBlurple)
-
-      Text(
-        "Open WatchDiscord on iPhone and "
-        + "tap 'Send to Watch'."
-      )
-      .font(.caption2)
-      .foregroundStyle(.secondary)
+  private var bgView: some View {
+    ZStack {
+      Color.dcBg
+      themeSync.backgroundGradient
+        .opacity(0.45)
     }
-    .padding(10)
-    .frame(
-      maxWidth: .infinity,
-      alignment: .leading
-    )
-    .background(
-      Color.discordCard,
-      in: RoundedRectangle(
-        cornerRadius: 14,
-        style: .continuous
-      )
-    )
-    .overlay(
-      RoundedRectangle(
-        cornerRadius: 14,
-        style: .continuous
-      )
-      .strokeBorder(
-        Color.discordBorder,
-        lineWidth: 1
-      )
-    )
+    .ignoresSafeArea()
   }
 
-  private var accountTopBar: some View {
+  private func sectionHeader(
+    _ title: String
+  ) -> some View {
+    HStack {
+      Text(title)
+        .font(
+          .system(size: 10, weight: .heavy)
+        )
+        .foregroundStyle(.secondary)
+      Spacer()
+    }
+    .padding(.horizontal, 6)
+    .padding(.top, 2)
+  }
+
+  private var topProfileBar: some View {
     HStack(spacing: 6) {
       if let me = discord.currentUser {
         NavigationLink {
           ProfileView(
-            token: effectiveToken,
+            token: token,
             userID: me.id,
             isCurrentUser: true
           )
         } label: {
           HStack(spacing: 7) {
-            ZStack(alignment: .bottomTrailing) {
+            ZStack(
+              alignment: .bottomTrailing
+            ) {
               Circle()
-                .fill(Color.discordBlurple)
+                .fill(Color.dcBlurple)
                 .frame(width: 22, height: 22)
               Text(
                 String(
@@ -180,16 +150,9 @@ struct ContentView: View {
               .foregroundStyle(.white)
               .frame(width: 22, height: 22)
               Circle()
-                .fill(Color.discordGreen)
+                .fill(Color.dcGreen)
                 .frame(width: 7, height: 7)
-                .overlay(
-                  Circle().stroke(
-                    Color.discordCard,
-                    lineWidth: 1.5
-                  )
-                )
             }
-
             VStack(
               alignment: .leading,
               spacing: 0
@@ -206,12 +169,10 @@ struct ContentView: View {
               Text("You • Online")
                 .font(.system(size: 9))
                 .foregroundStyle(
-                  Color.discordGreen
+                  Color.dcGreen
                 )
             }
-
             Spacer(minLength: 2)
-
             Image(systemName: "chevron.right")
               .font(
                 .system(
@@ -224,19 +185,17 @@ struct ContentView: View {
           .padding(.horizontal, 8)
           .padding(.vertical, 6)
           .background(
-            Color.discordCard,
+            Color.dcCard,
             in: RoundedRectangle(
-              cornerRadius: 13,
-              style: .continuous
+              cornerRadius: 13
             )
           )
           .overlay(
             RoundedRectangle(
-              cornerRadius: 13,
-              style: .continuous
+              cornerRadius: 13
             )
             .strokeBorder(
-              Color.discordBorder,
+              Color.dcBorder,
               lineWidth: 1
             )
           )
@@ -252,10 +211,9 @@ struct ContentView: View {
           .foregroundStyle(.white)
           .frame(width: 34, height: 34)
           .background(
-            Color.discordBlurple,
+            Color.dcBlurple,
             in: RoundedRectangle(
-              cornerRadius: 12,
-              style: .continuous
+              cornerRadius: 12
             )
           )
       }
@@ -263,18 +221,18 @@ struct ContentView: View {
     }
   }
 
-  private var dmBannerButton: some View {
+  private var dmButton: some View {
     NavigationLink {
       DirectMessagesListView(
         discord: discord,
         themeSync: themeSync,
-        token: effectiveToken
+        token: token
       )
     } label: {
       HStack(spacing: 8) {
         ZStack {
           Circle()
-            .fill(Color.discordBlurple)
+            .fill(Color.dcBlurple)
             .frame(width: 28, height: 28)
           Image(
             systemName: "bubble.left.fill"
@@ -284,7 +242,6 @@ struct ContentView: View {
           )
           .foregroundStyle(.white)
         }
-
         Text("Direct Messages")
           .font(
             .system(
@@ -295,23 +252,23 @@ struct ContentView: View {
           .foregroundStyle(.white)
           .lineLimit(1)
           .minimumScaleFactor(0.82)
-
         Spacer(minLength: 2)
-
         if !discord.dmChannels.isEmpty {
           Text("\(discord.dmChannels.count)")
             .font(
-              .system(size: 10, weight: .heavy)
+              .system(
+                size: 10,
+                weight: .heavy
+              )
             )
             .foregroundStyle(.white)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(
-              Color.discordRed,
+              Color.dcRed,
               in: Capsule()
             )
         }
-
         Image(systemName: "chevron.right")
           .font(
             .system(size: 10, weight: .bold)
@@ -321,40 +278,48 @@ struct ContentView: View {
       .padding(.horizontal, 8)
       .padding(.vertical, 8)
       .background(
-        Color.discordCard,
+        Color.dcCard,
         in: RoundedRectangle(
-          cornerRadius: 14,
-          style: .continuous
+          cornerRadius: 14
         )
       )
       .overlay(
-        RoundedRectangle(
-          cornerRadius: 14,
-          style: .continuous
-        )
-        .strokeBorder(
-          Color.discordBlurple.opacity(0.45),
-          lineWidth: 1
-        )
+        RoundedRectangle(cornerRadius: 14)
+          .strokeBorder(
+            Color.dcBlurple.opacity(0.45),
+            lineWidth: 1
+          )
       )
     }
     .buttonStyle(.plain)
   }
 
-  private func guildRow(
-    for guild: DiscordGuild
+  private func guildButton(
+    _ guild: DiscordGuild
   ) -> some View {
     NavigationLink {
       GuildChannelsView(
         discord: discord,
         themeSync: themeSync,
-        token: effectiveToken,
+        token: token,
         guild: guild
       )
     } label: {
       HStack(spacing: 8) {
-        GuildAvatarView(guild: guild)
-
+        ZStack {
+          RoundedRectangle(cornerRadius: 9)
+            .fill(Color.dcBlurple)
+            .frame(width: 28, height: 28)
+          Text(
+            String(
+              guild.name.prefix(2)
+            ).uppercased()
+          )
+          .font(
+            .system(size: 11, weight: .heavy)
+          )
+          .foregroundStyle(.white)
+        }
         Text(guild.name)
           .font(
             .system(size: 13, weight: .medium)
@@ -362,9 +327,7 @@ struct ContentView: View {
           .foregroundStyle(.white)
           .lineLimit(1)
           .minimumScaleFactor(0.85)
-
         Spacer(minLength: 2)
-
         Image(systemName: "chevron.right")
           .font(
             .system(size: 10, weight: .bold)
@@ -374,329 +337,101 @@ struct ContentView: View {
       .padding(.horizontal, 8)
       .padding(.vertical, 8)
       .background(
-        Color.discordCard,
+        Color.dcCard,
         in: RoundedRectangle(
-          cornerRadius: 14,
-          style: .continuous
+          cornerRadius: 14
         )
       )
       .overlay(
-        RoundedRectangle(
-          cornerRadius: 14,
-          style: .continuous
-        )
-        .strokeBorder(
-          Color.discordBorder,
-          lineWidth: 1
-        )
+        RoundedRectangle(cornerRadius: 14)
+          .strokeBorder(
+            Color.dcBorder,
+            lineWidth: 1
+          )
       )
     }
     .buttonStyle(.plain)
   }
 
   private func startSession() async {
-    guard !effectiveToken.isEmpty else {
-      return
-    }
-    discord.configure(token: effectiveToken)
-    if !isDemoMode {
-      themeSync.configure(
-        token: effectiveToken
-      )
+    guard !token.isEmpty else { return }
+    discord.configure(token: token)
+    if !isDemo {
+      themeSync.configure(token: token)
     }
     await discord.loadInitialData()
-    if !isDemoMode {
+    if !isDemo {
       await themeSync.fetchTheme()
     }
   }
 }
 
-struct GuildAvatarView: View {
+struct DirectMessagesListView: View {
+  @ObservedObject var discord: DiscordService
+  @ObservedObject var themeSync: NitroThemeSync
+  let token: String
+
+  var body: some View {
+    List(discord.dmChannels) { dm in
+      NavigationLink(dm.displayName) {
+        ChatView(
+          discord: discord,
+          themeSync: themeSync,
+          token: token,
+          channel: dm
+        )
+      }
+    }
+    .navigationTitle("Direct Messages")
+    .navigationBarTitleDisplayMode(.inline)
+  }
+}
+
+struct GuildChannelsView: View {
+  @ObservedObject var discord: DiscordService
+  @ObservedObject var themeSync: NitroThemeSync
+  let token: String
   let guild: DiscordGuild
 
-  private var initials: String {
-    let words = guild.name.split(
-      separator: " "
-    )
-    let letters = words.prefix(2)
-      .compactMap { $0.first }
-    return letters.isEmpty
-      ? "S" : String(letters).uppercased()
-  }
-
-  private var badgeColor: Color {
-    let palette: [Color] = [
-      .discordBlurple,
-Color(
-red: 235 / 255,
-green: 69 / 255,
-blue: 158 / 255
-),
-.discordGreen,
-Color(
-red: 240 / 255,
-green: 178 / 255,
-blue: 50 / 255
-),
-.discordRed
-]
-let idx =
-abs(guild.id.hashValue) % palette.count
-return palette[idx]
-}
-var body: some View {
-ZStack {
-RoundedRectangle(
-cornerRadius: 9,
-style: .continuous
-)
-.fill(badgeColor)
-.frame(width: 28, height: 28)
-Text(initials)
-.font(
-.system(size: 11, weight: .heavy)
-)
-.foregroundStyle(.white)
-}
-}
-}
-struct DirectMessagesListView: View {
-@ObservedObject var discord: DiscordService
-@ObservedObject var themeSync: NitroThemeSync
-let token: String
-var body: some View {
-ScrollView {
-VStack(spacing: 6) {
-ForEach(discord.dmChannels) { dm in
-NavigationLink {
-ChatView(
-discord: discord,
-themeSync: themeSync,
-token: token,
-channel: dm
-)
+  var body: some View {
+    List(discord.guildChannels) { ch in
+      if ch.isVoice {
+        NavigationLink {
+          CallView(
+            token: token,
+            guildID: guild.id,
+            channelID: ch.id,
+            channelName: ch.displayName,
+            isDM: false
+          )
+        } label: {
+          Label(
+            ch.displayName,
+            systemImage: "speaker.wave.2.fill"
+          )
+        }
+      } else {
+        NavigationLink {
+          ChatView(
+            discord: discord,
+            themeSync: themeSync,
+            token: token,
+            channel: ch
+          )
 } label: {
-HStack(spacing: 8) {
-ZStack(
-alignment: .bottomTrailing
-) {
-Circle()
-.fill(Color.discordBlurple)
-.frame(
-width: 26,
-height: 26
-)
-Text(
-String(
-dm.displayName.prefix(1)
-).uppercased()
-)
-.font(
-.system(
-size: 11,
-weight: .bold
-)
-)
-.foregroundStyle(.white)
-.frame(
-width: 26,
-height: 26
-)
-Circle()
-.fill(Color.discordGreen)
-.frame(width: 8, height: 8)
-.overlay(
-Circle().stroke(
-Color.discordCard,
-lineWidth: 1.5
-)
+Label(
+ch.displayName,
+systemImage: "number"
 )
 }
-Text(dm.displayName)
-.font(
-.system(
-size: 13,
-weight: .medium
-)
-)
-.foregroundStyle(.white)
-.lineLimit(1)
-Spacer()
-Image(systemName: "chevron.right")
-.font(
-.system(
-size: 10,
-weight: .bold
-)
-)
-.foregroundStyle(.secondary)
-}
-.padding(.horizontal, 8)
-.padding(.vertical, 8)
-.background(
-Color.discordCard,
-in: RoundedRectangle(
-cornerRadius: 14,
-style: .continuous
-)
-)
-.overlay(
-RoundedRectangle(
-cornerRadius: 14,
-style: .continuous
-)
-.strokeBorder(
-Color.discordBorder,
-lineWidth: 1
-)
-)
-}
-.buttonStyle(.plain)
 }
 }
-.padding(.horizontal, 2)
-}
-.background(
-ZStack {
-Color.discordBg
-themeSync.backgroundGradient
-.opacity(0.45)
-}
-.ignoresSafeArea()
-)
-.navigationTitle("Direct Messages")
-.navigationBarTitleDisplayMode(.inline)
-}
-}
-struct GuildChannelsView: View {
-@ObservedObject var discord: DiscordService
-@ObservedObject var themeSync: NitroThemeSync
-let token: String
-let guild: DiscordGuild
-var body: some View {
-ScrollView {
-VStack(spacing: 6) {
-ForEach(
-discord.guildChannels
-) { channel in
-channelRow(for: channel)
-}
-}
-.padding(.horizontal, 2)
-}
-.background(
-ZStack {
-Color.discordBg
-themeSync.backgroundGradient
-.opacity(0.45)
-}
-.ignoresSafeArea()
-)
-.navigationTitle()
+.navigationTitle(guild.name)
 .navigationBarTitleDisplayMode(.inline)
 .task {
 await discord.loadChannels(
-for: 
+for: guild.id
 )
-}
-}
-@ViewBuilder
-private func channelRow(
-for channel: DiscordChannel
-) -> some View {
-if channel.isVoice {
-NavigationLink {
-CallView(
-token: token,
-guildID: ,
-channelID: ,
-channelName: channel.displayName,
-isDM: false
-)
-} label: {
-HStack(spacing: 8) {
-Image(
-systemName: "speaker.wave.2.fill"
-)
-.font(.caption)
-.foregroundStyle(Color.discordGreen)
-Text(channel.displayName)
-.font(
-.system(size: 13, weight: .medium)
-)
-.lineLimit(1)
-Spacer()
-Image(systemName: "chevron.right")
-.font(.system(size: 10))
-.foregroundStyle(.secondary)
-}
-.padding(.horizontal, 8)
-.padding(.vertical, 8)
-.background(
-Color.discordCard,
-in: RoundedRectangle(
-cornerRadius: 13,
-style: .continuous
-)
-)
-.overlay(
-RoundedRectangle(
-cornerRadius: 13,
-style: .continuous
-)
-.strokeBorder(
-Color.discordBorder,
-lineWidth: 1
-)
-)
-}
-.buttonStyle(.plain)
-} else {
-NavigationLink {
-ChatView(
-discord: discord,
-themeSync: themeSync,
-token: token,
-channel: channel
-)
-} label: {
-HStack(spacing: 8) {
-Text("#")
-.font(
-.system(size: 15, weight: .bold)
-)
-.foregroundStyle(.secondary)
-Text(channel.displayName)
-.font(
-.system(size: 13, weight: .medium)
-)
-.lineLimit(1)
-Spacer()
-Image(systemName: "chevron.right")
-.font(.system(size: 10))
-.foregroundStyle(.secondary)
-}
-.padding(.horizontal, 8)
-.padding(.vertical, 8)
-.background(
-Color.discordCard,
-in: RoundedRectangle(
-cornerRadius: 13,
-style: .continuous
-)
-)
-.overlay(
-RoundedRectangle(
-cornerRadius: 13,
-style: .continuous
-)
-.strokeBorder(
-Color.discordBorder,
-lineWidth: 1
-)
-)
-}
-.buttonStyle(.plain)
 }
 }
 }
@@ -704,30 +439,14 @@ struct ThemePickerView: View {
 @ObservedObject var themeSync: NitroThemeSync
 var body: some View {
 List(themeSync.presets) { preset in
-Button {
+Button(preset.name) {
 Task {
 await themeSync.applyAndSync(
 preset: preset
 )
 }
-} label: {
-HStack {
-Circle()
-.fill(Color.discordBlurple)
-.frame(width: 20, height: 20)
-Text()
 }
 }
-}
-.scrollContentBackground(.hidden)
-.background(
-ZStack {
-Color.discordBg
-themeSync.backgroundGradient
-.opacity(0.45)
-}
-.ignoresSafeArea()
-)
 .navigationTitle("Nitro Themes")
 .navigationBarTitleDisplayMode(.inline)
 }
