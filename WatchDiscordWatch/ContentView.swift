@@ -5,10 +5,18 @@ struct ContentView: View {
     @StateObject private var themeSync = NitroThemeSync()
     @AppStorage("discord_user_token") private var savedToken: String = ""
 
+    private var isDemoMode: Bool {
+        ProcessInfo.processInfo.arguments.contains("-DEMO_MODE")
+    }
+
+    private var effectiveToken: String {
+        isDemoMode ? "demo_token" : savedToken
+    }
+
     var body: some View {
         NavigationStack {
             List {
-                if savedToken.isEmpty {
+                if effectiveToken.isEmpty {
                     Section("Setup Required") {
                         Text("Open the WatchDiscord app on your iPhone and tap 'Send to Watch' to sync your token.")
                             .font(.caption2)
@@ -25,7 +33,7 @@ struct ContentView: View {
                     Section("Account") {
                         if let me = discord.currentUser {
                             NavigationLink {
-                                ProfileView(token: savedToken, userID: me.id, isCurrentUser: true)
+                                ProfileView(token: effectiveToken, userID: me.id, isCurrentUser: true)
                             } label: {
                                 Label(me.displayName, systemImage: "person.crop.circle")
                             }
@@ -45,7 +53,7 @@ struct ContentView: View {
                                 ChatView(
                                     discord: discord,
                                     themeSync: themeSync,
-                                    token: savedToken,
+                                    token: effectiveToken,
                                     channel: dm
                                 )
                             } label: {
@@ -62,7 +70,7 @@ struct ContentView: View {
                                 GuildChannelsView(
                                     discord: discord,
                                     themeSync: themeSync,
-                                    token: savedToken,
+                                    token: effectiveToken,
                                     guild: guild
                                 )
                             } label: {
@@ -79,18 +87,22 @@ struct ContentView: View {
             .refreshable {
                 await startSession()
             }
-            .task(id: savedToken) {
+            .task(id: effectiveToken) {
                 await startSession()
             }
         }
     }
 
     private func startSession() async {
-        guard !savedToken.isEmpty else { return }
-        discord.configure(token: savedToken)
-        themeSync.configure(token: savedToken)
+        guard !effectiveToken.isEmpty else { return }
+        discord.configure(token: effectiveToken)
+        if !isDemoMode {
+            themeSync.configure(token: effectiveToken)
+        }
         await discord.loadInitialData()
-        await themeSync.fetchTheme()
+        if !isDemoMode {
+            await themeSync.fetchTheme()
+        }
     }
 }
 
