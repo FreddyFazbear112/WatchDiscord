@@ -17,10 +17,6 @@ jobs:
           xcodebuild archive -project WatchDiscord.xcodeproj -scheme WatchDiscord -configuration Release -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/WatchDiscord.xcarchive" CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -quiet
           mkdir -p Payload
           cp -r "$RUNNER_TEMP/WatchDiscord.xcarchive/Products/Applications/"*.app Payload/
-          plutil -replace WKCompanionAppBundleIdentifier -string "com.personal.watchdiscord.VS635RJZ7M" Payload/WatchDiscord.app/Watch/WatchDiscordWatch.app/Info.plist
-          plutil -replace CFBundleIdentifier -string "com.personal.watchdiscord.VS635RJZ7M.watchkitapp" Payload/WatchDiscord.app/Watch/WatchDiscordWatch.app/Info.plist
-          plutil -replace CFBundleIdentifier -string "com.personal.watchdiscord.VS635RJZ7M.watchkitapp.watchkitextension" Payload/WatchDiscord.app/Watch/WatchDiscordWatch.app/PlugIns/WatchDiscordWatchExtension.appex/Info.plist
-          plutil -replace NSExtension.NSExtensionAttributes.WKAppBundleIdentifier -string "com.personal.watchdiscord.VS635RJZ7M.watchkitapp" Payload/WatchDiscord.app/Watch/WatchDiscordWatch.app/PlugIns/WatchDiscordWatchExtension.appex/Info.plist
           zip -r WatchDiscord.ipa Payload
       - uses: actions/upload-artifact@v4
         with:
