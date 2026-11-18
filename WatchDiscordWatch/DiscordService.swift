@@ -77,6 +77,10 @@ final class DiscordService: ObservableObject {
     private let session = URLSession(configuration: .default)
     private var token: String = ""
 
+    private var isDemo: Bool {
+        token == "demo_token"
+    }
+
     func configure(token: String) {
         self.token = token.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -102,6 +106,25 @@ final class DiscordService: ObservableObject {
             errorMessage = "Missing token. Sync from iPhone first."
             return
         }
+        if isDemo {
+            errorMessage = nil
+            currentUser = DiscordUser(id: "1001", username: "freddyfazbear", globalName: "Freddy", avatar: nil)
+            dmChannels = [
+                DiscordChannel(id: "dm1", type: 1, guildID: nil, name: nil, recipients: [
+                    DiscordUser(id: "1002", username: "alex", globalName: "Alex", avatar: nil)
+                ]),
+                DiscordChannel(id: "dm2", type: 1, guildID: nil, name: nil, recipients: [
+                    DiscordUser(id: "1003", username: "sam", globalName: "Sam", avatar: nil)
+                ])
+            ]
+            guilds = [
+                DiscordGuild(id: "g1", name: "WatchDiscord HQ", icon: nil),
+                DiscordGuild(id: "g2", name: "Gaming Lounge", icon: nil),
+                DiscordGuild(id: "g3", name: "Swift Developers", icon: nil)
+            ]
+            return
+        }
+
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
@@ -116,6 +139,15 @@ final class DiscordService: ObservableObject {
     }
 
     func loadChannels(for guildID: String) async {
+        if isDemo {
+            guildChannels = [
+                DiscordChannel(id: "c1", type: 0, guildID: guildID, name: "general", recipients: nil),
+                DiscordChannel(id: "c2", type: 0, guildID: guildID, name: "announcements", recipients: nil),
+                DiscordChannel(id: "c3", type: 2, guildID: guildID, name: "Voice Chat", recipients: nil)
+            ]
+            return
+        }
+
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
@@ -129,6 +161,16 @@ final class DiscordService: ObservableObject {
     }
 
     func loadMessages(for channelID: String) async {
+        if isDemo {
+            let friend = DiscordUser(id: "1002", username: "alex", globalName: "Alex", avatar: nil)
+            let me = currentUser ?? DiscordUser(id: "1001", username: "freddyfazbear", globalName: "Freddy", avatar: nil)
+            messages = [
+                DiscordMessage(id: "m1", channelID: channelID, content: "Yo, does WatchDiscord work on your wrist?", timestamp: "2026-11-18T07:45:00Z", author: friend),
+                DiscordMessage(id: "m2", channelID: channelID, content: "Yeah! Sending this straight from Apple Watch.", timestamp: "2026-11-18T07:46:00Z", author: me)
+            ]
+            return
+        }
+
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
@@ -144,6 +186,12 @@ final class DiscordService: ObservableObject {
     func sendMessage(to channelID: String, content: String) async {
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+
+        if isDemo {
+            let me = currentUser ?? DiscordUser(id: "1001", username: "freddyfazbear", globalName: "Freddy", avatar: nil)
+            messages.append(DiscordMessage(id: UUID().uuidString, channelID: channelID, content: trimmed, timestamp: "2026-11-18T07:47:00Z", author: me))
+            return
+        }
 
         do {
             let request = try makeRequest(
@@ -161,6 +209,7 @@ final class DiscordService: ObservableObject {
     }
 
     func addReaction(channelID: String, messageID: String, emoji: String) async {
+        if isDemo { return }
         guard let encoded = emoji.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else { return }
         do {
             let request = try makeRequest(
