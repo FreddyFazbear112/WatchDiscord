@@ -66,6 +66,7 @@ struct ContentView: View {
                 .padding(.horizontal, 4)
             }
 
+            accountTopBar
             dmBannerButton
 
             HStack {
@@ -86,8 +87,6 @@ struct ContentView: View {
             ForEach(discord.guilds) { guild in
               guildRow(for: guild)
             }
-
-            accountFooterRow
           }
         }
         .padding(.horizontal, 2)
@@ -150,6 +149,118 @@ struct ContentView: View {
         lineWidth: 1
       )
     )
+  }
+
+  private var accountTopBar: some View {
+    HStack(spacing: 6) {
+      if let me = discord.currentUser {
+        NavigationLink {
+          ProfileView(
+            token: effectiveToken,
+            userID: me.id,
+            isCurrentUser: true
+          )
+        } label: {
+          HStack(spacing: 7) {
+            ZStack(alignment: .bottomTrailing) {
+              Circle()
+                .fill(Color.discordBlurple)
+                .frame(width: 22, height: 22)
+              Text(
+                String(
+                  me.displayName.prefix(1)
+                ).uppercased()
+              )
+              .font(
+                .system(
+                  size: 10,
+                  weight: .bold
+                )
+              )
+              .foregroundStyle(.white)
+              .frame(width: 22, height: 22)
+              Circle()
+                .fill(Color.discordGreen)
+                .frame(width: 7, height: 7)
+                .overlay(
+                  Circle().stroke(
+                    Color.discordCard,
+                    lineWidth: 1.5
+                  )
+                )
+            }
+
+            VStack(
+              alignment: .leading,
+              spacing: 0
+            ) {
+              Text(me.displayName)
+                .font(
+                  .system(
+                    size: 12,
+                    weight: .semibold
+                  )
+                )
+                .foregroundStyle(.white)
+                .lineLimit(1)
+              Text("You • Online")
+                .font(.system(size: 9))
+                .foregroundStyle(
+                  Color.discordGreen
+                )
+            }
+
+            Spacer(minLength: 2)
+
+            Image(systemName: "chevron.right")
+              .font(
+                .system(
+                  size: 9,
+                  weight: .bold
+                )
+              )
+              .foregroundStyle(.secondary)
+          }
+          .padding(.horizontal, 8)
+          .padding(.vertical, 6)
+          .background(
+            Color.discordCard,
+            in: RoundedRectangle(
+              cornerRadius: 13,
+              style: .continuous
+            )
+          )
+          .overlay(
+            RoundedRectangle(
+              cornerRadius: 13,
+              style: .continuous
+            )
+            .strokeBorder(
+              Color.discordBorder,
+              lineWidth: 1
+            )
+          )
+        }
+        .buttonStyle(.plain)
+      }
+
+      NavigationLink {
+        ThemePickerView(themeSync: themeSync)
+      } label: {
+        Image(systemName: "paintpalette.fill")
+          .font(.system(size: 13))
+          .foregroundStyle(.white)
+          .frame(width: 34, height: 34)
+          .background(
+            Color.discordBlurple,
+            in: RoundedRectangle(
+              cornerRadius: 12,
+              style: .continuous
+            )
+          )
+      }
+      .buttonStyle(.plain)
+    }
   }
 
   private var dmBannerButton: some View {
@@ -283,95 +394,6 @@ struct ContentView: View {
     .buttonStyle(.plain)
   }
 
-  private var accountFooterRow: some View {
-    HStack(spacing: 6) {
-      if let me = discord.currentUser {
-        NavigationLink {
-          ProfileView(
-            token: effectiveToken,
-            userID: me.id,
-            isCurrentUser: true
-          )
-        } label: {
-          HStack(spacing: 6) {
-            ZStack(alignment: .bottomTrailing) {
-              Circle()
-                .fill(Color.discordBlurple)
-                .frame(width: 20, height: 20)
-              Circle()
-                .fill(Color.discordGreen)
-                .frame(width: 7, height: 7)
-                .overlay(
-                  Circle().stroke(
-                    Color.discordCard,
-                    lineWidth: 1.5
-                  )
-                )
-            }
-            VStack(
-              alignment: .leading,
-              spacing: 0
-            ) {
-              Text(me.displayName)
-                .font(
-                  .system(
-                    size: 12,
-                    weight: .semibold
-                  )
-                )
-                .foregroundStyle(.white)
-                .lineLimit(1)
-              Text("Online")
-                .font(.system(size: 9))
-                .foregroundStyle(
-                  Color.discordGreen
-                )
-            }
-            Spacer()
-          }
-          .padding(.horizontal, 8)
-          .padding(.vertical, 6)
-          .background(
-            Color.discordCard,
-            in: RoundedRectangle(
-              cornerRadius: 13,
-              style: .continuous
-            )
-          )
-          .overlay(
-            RoundedRectangle(
-              cornerRadius: 13,
-              style: .continuous
-            )
-            .strokeBorder(
-              Color.discordBorder,
-              lineWidth: 1
-            )
-          )
-        }
-        .buttonStyle(.plain)
-      }
-
-      NavigationLink {
-        ThemePickerView(themeSync: themeSync)
-      } label: {
-        Image(systemName: "paintpalette.fill")
-          .font(.system(size: 13))
-          .foregroundStyle(.white)
-          .frame(width: 34, height: 34)
-          .background(
-            Color.discordBlurple,
-            in: RoundedRectangle(
-              cornerRadius: 12,
-              style: .continuous
-            )
-          )
-      }
-      .buttonStyle(.plain)
-    }
-    .padding(.top, 4)
-  }
-
   private func startSession() async {
     guard !effectiveToken.isEmpty else {
       return
@@ -405,32 +427,31 @@ struct GuildAvatarView: View {
   private var badgeColor: Color {
     let palette: [Color] = [
       .discordBlurple,
-      Color(
-        red: 235 / 255,
-        green: 69 / 255,
-        blue: 158 / 255
-      ),
-      .discordGreen,
-      Color(
-        red: 240 / 255,
-        green: 178 / 255,
-        blue: 50 / 255
-      ),
-      .discordRed
-    ]
-    let idx =
-      abs(guild.id.hashValue) % palette.count
-    return palette[idx]
-  }
-
-  var body: some View {
-    ZStack {
-      RoundedRectangle(
-        cornerRadius: 9,
-        style: .continuous
-      )
-      .fill(badgeColor)
-      .frame(width: 28, height: 28)
+Color(
+red: 235 / 255,
+green: 69 / 255,
+blue: 158 / 255
+),
+.discordGreen,
+Color(
+red: 240 / 255,
+green: 178 / 255,
+blue: 50 / 255
+),
+.discordRed
+]
+let idx =
+abs(guild.id.hashValue) % palette.count
+return palette[idx]
+}
+var body: some View {
+ZStack {
+RoundedRectangle(
+cornerRadius: 9,
+style: .continuous
+)
+.fill(badgeColor)
+.frame(width: 28, height: 28)
 Text(initials)
 .font(
 .system(size: 11, weight: .heavy)
@@ -571,11 +592,11 @@ themeSync.backgroundGradient
 }
 .ignoresSafeArea()
 )
-.navigationTitle(guild.name)
+.navigationTitle()
 .navigationBarTitleDisplayMode(.inline)
 .task {
 await discord.loadChannels(
-for: guild.id
+for: 
 )
 }
 }
@@ -587,8 +608,8 @@ if channel.isVoice {
 NavigationLink {
 CallView(
 token: token,
-guildID: guild.id,
-channelID: channel.id,
+guildID: ,
+channelID: ,
 channelName: channel.displayName,
 isDM: false
 )
@@ -694,7 +715,7 @@ HStack {
 Circle()
 .fill(Color.discordBlurple)
 .frame(width: 20, height: 20)
-Text(preset.name)
+Text()
 }
 }
 }
