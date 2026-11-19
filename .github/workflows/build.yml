@@ -3,6 +3,10 @@ name: Build WatchDiscord IPA
 on:
   workflow_dispatch:
 
+concurrency:
+  group: build-watchdiscord
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build IPA
