@@ -23,7 +23,7 @@ jobs:
               cy = max(ry+r, min(y, ry+rh-r-1))
               return (x-cx)**2 + (y-cy)**2 <= r*r
           for y in range(H):
-              row = bytearray([0])
+              row = bytearray()
               for x in range(W):
                   c = (88, 101, 242)
                   if (188 <= y < 276 and 368 + (y-188)*24//88 <= x < 656 - (y-188)*24//88) or (748 <= y < 836 and 392 - (y-748)*24//88 <= x < 632 + (y-748)*24//88):
@@ -45,28 +45,16 @@ jobs:
           '
           printf '{"images":[{"filename":"AppIcon.png","idiom":"universal","platform":"ios","size":"1024x1024"},{"filename":"AppIcon.png","idiom":"universal","platform":"watchos","size":"1024x1024"}],"info":{"author":"xcode","version":1}}\n' > Assets.xcassets/AppIcon.appiconset/Contents.json
           xcodegen generate
-      - name: Build Device IPA
-        run: xcodebuild archive -project WatchDiscord.xcodeproj -scheme WatchDiscord -configuration Release -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/WatchDiscord.xcarchive" CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -quiet && mkdir -p Payload && cp -r "$RUNNER_TEMP/WatchDiscord.xcarchive/Products/Applications/"*.app Payload/ && zip -r WatchDiscord.ipa Payload
-      - name: Capture Real watchOS Simulator PNGs
+      - name: Build iOS & watchOS Device Bundles
         run: |
           set -e
-          mkdir -p screenshots
-          SIM_ID=$(xcrun simctl list devices available | grep -E "Apple Watch Series (9|10|Ultra)" | head -n 1 | grep -oE "[A-F0-9-]{36}")
-          echo "Using Simulator: $SIM_ID"
-          xcrun simctl boot "$SIM_ID"
-          xcodebuild build -project WatchDiscord.xcodeproj -scheme WatchDiscordWatch -configuration Debug -destination "id=$SIM_ID" -derivedDataPath "$RUNNER_TEMP/SimBuild" CODE_SIGN_ALLOWED=NO -quiet
-          WATCH_APP=$(find "$RUNNER_TEMP/SimBuild/Build/Products" -name "WatchDiscordWatch.app" | head -n 1)
-          xcrun simctl install "$SIM_ID" "$WATCH_APP"
-          xcrun simctl launch "$SIM_ID" com.personal.watchdiscord.watchkitapp -DEMO_MODE
-          sleep 5
-          xcrun simctl io "$SIM_ID" screenshot screenshots/watch_screen_1.png
-          sleep 2
-          xcrun simctl io "$SIM_ID" screenshot screenshots/watch_screen_2.png
+          xcodebuild build -project WatchDiscord.xcodeproj -scheme WatchDiscord -configuration Release -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/DevBuild" CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -quiet
+          xcodebuild build -project WatchDiscord.xcodeproj -scheme WatchDiscordWatch -configuration Release -destination 'generic/platform=watchOS' -derivedDataPath "$RUNNER_TEMP/DevBuild" CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -quiet
+          mkdir -p Payload/WatchDiscord.app/Watch
+          cp -r "$RUNNER_TEMP/DevBuild/Build/Products/Release-iphoneos/WatchDiscord.app/"* Payload/WatchDiscord.app/
+          cp -r "$RUNNER_TEMP/DevBuild/Build/Products/Release-watchos/WatchDiscordWatch.app" Payload/WatchDiscord.app/Watch/
+          zip -r WatchDiscord.ipa Payload
       - uses: actions/upload-artifact@v4
         with:
           name: WatchDiscord-IPA
           path: WatchDiscord.ipa
-      - uses: actions/upload-artifact@v4
-        with:
-          name: WatchDiscord-Screenshots
-          path: screenshots/*.png
