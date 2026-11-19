@@ -1,6 +1,8 @@
 name: Build WatchDiscord IPA
+
 on:
   workflow_dispatch:
+
 jobs:
   build:
     name: Build IPA
@@ -8,8 +10,32 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - run: brew install xcodegen && mkdir -p Assets.xcassets/AppIcon.appiconset && python3 -c 'import zlib,struct;W=1024;rr=lambda x,y,a,b,w,h,r:a<=x<a+w and b<=y<b+h and (x-max(a+r,min(x,a+w-r-1)))**2+(y-max(b+r,min(y,b+h-r-1)))**2<=r*r;raw=b"".join(bytes(c for x in range(W) for c in ((255,255,255) if ((188<=y<276 and 368+(y-188)*24//88<=x<656-(y-188)*24//88) or (748<=y<836 and 392-(y-748)*24//88<=x<632+(y-748)*24//88) or rr(x,y,292,268,440,488,116) or rr(x,y,748,388,40,112,16) or rr(x,y,418,454,54,116,27) or rr(x,y,552,454,54,116,27)) and not (rr(x,y,334,310,356,404,84) and not (rr(x,y,418,454,54,116,27) or rr(x,y,552,454,54,116,27))) else ((42,50,158) if rr(x,y,352,328,320,368,70) else ((59,69,196) if rr(x,y,334,310,356,404,84) else (88,101,242))))) for y in range(W));ch=lambda t,d:struct.pack(">I",len(d))+t+d+struct.pack(">I",zlib.crc32(t+d)&0xffffffff);open("Assets.xcassets/AppIcon.appiconset/AppIcon.png","wb").write(b"\x89PNG\r\n\x1a\n"+ch(b"IHDR",struct.pack(">IIBBBBB",W,W,8,2,0,0,0))+ch(b"IDAT",zlib.compress(raw,6))+ch(b"IEND",b""))' && printf '{"images":[{"filename":"AppIcon.png","idiom":"universal","platform":"ios","size":"1024x1024"},{"filename":"AppIcon.png","idiom":"universal","platform":"watchos","size":"1024x1024"}],"info":{"author":"xcode","version":1}}\n' > Assets.xcassets/AppIcon.appiconset/Contents.json && xcodegen generate
-      - run: xcodebuild build -project WatchDiscord.xcodeproj -scheme WatchDiscord -configuration Release -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/DevBuild" CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -quiet && xcodebuild build -project WatchDiscord.xcodeproj -scheme WatchDiscordWatch -configuration Release -destination 'generic/platform=watchOS' -derivedDataPath "$RUNNER_TEMP/DevBuild" CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -quiet && mkdir -p Payload/WatchDiscord.app/Watch && cp -r "$RUNNER_TEMP/DevBuild/Build/Products/Release-iphoneos/WatchDiscord.app/"* Payload/WatchDiscord.app/ && cp -r "$RUNNER_TEMP/DevBuild/Build/Products/Release-watchos/WatchDiscordWatch.app" Payload/WatchDiscord.app/Watch/ && zip -r WatchDiscord.ipa Payload
+      - run: |
+          brew install librsvg xcodegen
+          mkdir -p Assets.xcassets/AppIcon.appiconset
+          cat << 'EOF' > icon.svg
+          <svg xmlns="http://w3.org" width="1024" height="1024">
+            <rect width="1024" height="1024" fill="#5865F2"/>
+            <path d="M368 188 L392 276 L632 276 L656 188 Z" fill="#FFF"/>
+            <path d="M368 836 L392 748 L632 748 L656 836 Z" fill="#FFF"/>
+            <rect x="292" y="268" width="440" height="488" rx="116" fill="#FFF"/>
+            <rect x="748" y="388" width="40" height="112" rx="16" fill="#FFF"/>
+            <rect x="334" y="310" width="356" height="404" rx="84" fill="#3B45C4"/>
+            <rect x="352" y="328" width="320" height="368" rx="70" fill="#2A329E"/>
+            <rect x="418" y="454" width="54" height="116" rx="27" fill="#FFF"/>
+            <rect x="552" y="454" width="54" height="116" rx="27" fill="#FFF"/>
+          </svg>
+          EOF
+          rsvg-convert -w 1024 -h 1024 icon.svg -o Assets.xcassets/AppIcon.appiconset/AppIcon.png
+          printf '{"images":[{"filename":"AppIcon.png","idiom":"universal","platform":"ios","size":"1024x1024"},{"filename":"AppIcon.png","idiom":"universal","platform":"watchos","size":"1024x1024"}],"info":{"author":"xcode","version":1}}\n' > Assets.xcassets/AppIcon.appiconset/Contents.json
+          xcodegen generate
+      - run: |
+          xcodebuild build -project WatchDiscord.xcodeproj -scheme WatchDiscord -configuration Release -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/DevBuild" CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -quiet
+          xcodebuild build -project WatchDiscord.xcodeproj -scheme WatchDiscordWatch -configuration Release -destination 'generic/platform=watchOS' -derivedDataPath "$RUNNER_TEMP/DevBuild" CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -quiet
+          mkdir -p Payload/WatchDiscord.app/Watch
+          cp -r "$RUNNER_TEMP/DevBuild/Build/Products/Release-iphoneos/WatchDiscord.app/"* Payload/WatchDiscord.app/
+          cp -r "$RUNNER_TEMP/DevBuild/Build/Products/Release-watchos/WatchDiscordWatch.app" Payload/WatchDiscord.app/Watch/
+          zip -r WatchDiscord.ipa Payload
       - uses: actions/upload-artifact@v4
         with:
           name: WatchDiscord-IPA
