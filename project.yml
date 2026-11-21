@@ -48,5 +48,6 @@ targets:
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
         WKApplication: true
+        WKWatchKitApp: true
         WKCompanionAppBundleIdentifier: com.personal.watchdiscord
         NSMicrophoneUsageDescription: Used for voice calls on Discord.
