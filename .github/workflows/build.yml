@@ -20,9 +20,8 @@ jobs:
       - run: rsvg-convert -w 1024 -h 1024 icon.svg -o Assets.xcassets/AppIcon.appiconset/AppIcon.png
       - run: echo "eyJpbWFnZXMiOlt7ImZpbGVuYW1lIjoiQXBwSWNvbi5wbmciLCJpZGlvbSI6InVuaXZlcnNhbCIsInBsYXRmb3JtIjoiaW9zIiwic2l6ZSI6IjEwMjR4MTAyNCJ9LHsiZmlsZW5hbWUiOiJBcHBJY29uLnBuZyIsImlkaW9tIjoidW5pdmVyc2FsIiwicGxhdGZvcm0iOiJ3YXRjaG9zIiwic2l6ZSI6IjEwMjR4MTAyNCJ9XSwiaW5mbyI6eyJhdXRob3IiOiJ4Y29kZSIsInZlcnNpb24iOjF9fQ==" | base64 -d > Assets.xcassets/AppIcon.appiconset/Contents.json
       - run: xcodegen generate
-      - run: xcodebuild build -project WatchDiscord.xcodeproj -scheme WatchDiscord -configuration Release -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/DevBuild" CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -quiet
-      - run: xcodebuild build -project WatchDiscord.xcodeproj -scheme WatchDiscordWatch -configuration Release -destination 'generic/platform=watchOS' -derivedDataPath "$RUNNER_TEMP/DevBuild" CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -quiet
-      - run: mkdir -p Payload/WatchDiscord.app/Watch && cp -r "$RUNNER_TEMP/DevBuild/Build/Products/Release-iphoneos/WatchDiscord.app/"* Payload/WatchDiscord.app/ && cp -r "$RUNNER_TEMP/DevBuild/Build/Products/Release-watchos/WatchDiscordWatch.app" Payload/WatchDiscord.app/Watch/ && zip -r WatchDiscord.ipa Payload
+      - run: xcodebuild archive -project WatchDiscord.xcodeproj -scheme WatchDiscord -configuration Release -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/WatchDiscord.xcarchive" CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -quiet
+      - run: ls -laR "$RUNNER_TEMP/WatchDiscord.xcarchive/Products/Applications/WatchDiscord.app" && mkdir -p Payload && cp -r "$RUNNER_TEMP/WatchDiscord.xcarchive/Products/Applications/WatchDiscord.app" Payload/ && zip -r WatchDiscord.ipa Payload
       - uses: actions/upload-artifact@v4
         with:
           name: WatchDiscord-IPA
