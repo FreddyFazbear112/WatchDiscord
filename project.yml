@@ -25,8 +25,6 @@ targets:
     dependencies:
       - target: WatchDiscordWatch
         embed: true
-        copy:
-          destination: watch
 
   WatchDiscordWatch:
     type: application
